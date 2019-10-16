@@ -8,10 +8,12 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.*
 import java.util.*
 import java.net.InetSocketAddress
+import java.time.LocalDateTime.now
 import javax.net.ssl.SSLSocket
 
 val route53ClientInstance: Route53Client = Route53Client.builder().region(AWS_GLOBAL).build()
 var listOfTimedOuts : ArrayList<String> = ArrayList()
+var listOfNotExpiringCerts : ArrayList<String> = ArrayList()
 
 internal fun main() {
     findAllHostedZones().let { ListOfZones ->
@@ -24,7 +26,11 @@ internal fun main() {
        }
    }
 
-    println("Terminated ${Date()} \n List of timed out URLs: \n $listOfTimedOuts")
+    println("Terminated ${now()} \n " +
+            "=========================== List of timed out URLs:  : ========================= \n" +
+            "$listOfTimedOuts \n" +
+            "=========================== List of NOT expiring URLs: ========================= \n" +
+            "$listOfNotExpiringCerts")
 }
 
 private fun getSSLCertsUsingSockets(url: String){
@@ -38,7 +44,9 @@ private fun getSSLCertsUsingSockets(url: String){
             val xc = c as X509Certificate
             val daysLeft = (xc.notAfter.time -  Date().time) / (1000 * 60 * 60 * 24)
             if(daysLeft < 100)
-                println("$url certificate expires on : ${xc.notAfter}.. only $daysLeft days to go")
+                println("$url certificate expires on : ${xc.notAfter}.. ($daysLeft days to go)")
+            else
+                listOfNotExpiringCerts.add("$url ($daysLeft days)")
         }
     }catch(e : Exception){
         listOfTimedOuts.add(url)
